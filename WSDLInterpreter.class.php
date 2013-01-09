@@ -46,14 +46,6 @@ class WSDLInterpreterException extends Exception { }
  * The WSDLInterpreter is utilized for the parsing of a WSDL document for rapid
  * and flexible use within the context of PHP 5 scripts.
  * 
- * Example Usage:
- * <code>
- * require_once 'WSDLInterpreter.php';
- * $myWSDLlocation = 'http://www.example.com/ExampleService?wsdl';
- * $wsdlInterpreter = new WSDLInterpreter($myWSDLlocation);
- * $wsdlInterpreter->savePHP('/example/output/directory/');
- * </code>
- * 
  * @category WebServices
  * @package WSDLInterpreter
  */
@@ -112,10 +104,10 @@ class WSDLInterpreter
     {
         try {
             $this->_wsdl = $wsdl;
-            $this->_client = new SoapClient($wsdl);
+            $this->_client = new SoapClient($this->_wsdl);
             
             $this->_dom = new DOMDocument();
-            $this->_dom->load($wsdl, LIBXML_DTDLOAD|LIBXML_DTDATTR|LIBXML_NOENT|LIBXML_XINCLUDE);
+            $this->_dom->load($this->_wsdl, LIBXML_DTDLOAD|LIBXML_DTDATTR|LIBXML_NOENT|LIBXML_XINCLUDE);
             
             $xpath = new DOMXPath($this->_dom);
             
@@ -331,8 +323,7 @@ class WSDLInterpreter
      */
     private function _generateClassPHP($class) 
     {
-        $return = "";
-        $return .= 'if (!class_exists("'.$class->getAttribute("validatedName").'")) {'."\n";
+        $return = 'namespace WSDLI;'."\n\n";
         $return .= '/**'."\n";
         $return .= ' * '.$class->getAttribute("validatedName")."\n";
         $return .= ' */'."\n";
@@ -382,7 +373,7 @@ class WSDLInterpreter
             $return .= $paramMapReturn;
         }
     
-        $return .= "}}";
+        $return .= "}";
         return $return;
     }
     
@@ -433,8 +424,7 @@ class WSDLInterpreter
      */
     private function _generateServicePHP($service) 
     {
-        $return = "";
-        $return .= 'if (!class_exists("'.$service->getAttribute("validatedName").'")) {'."\n";
+        $return = 'namespace WSDLI;'."\n\n";
         $return .= '/**'."\n";
         $return .= ' * '.$service->getAttribute("validatedName")."\n";
         $return .= ' * @author WSDLInterpreter'."\n";
@@ -506,7 +496,7 @@ class WSDLInterpreter
             $return .= $this->_generateServiceFunctionPHP($functionName, $functionNodeList)."\n\n";
         }
     
-        $return .= "}}";
+        $return .= "}";
         return $return;
     }
 
@@ -598,20 +588,38 @@ class WSDLInterpreter
         if (sizeof($this->_servicePHPSources) == 0) {
             throw new WSDLInterpreterException("No services loaded");
         }
-        $classSource = join("\n\n", $this->_classPHPSources);
+        
+        $outputDirectory = rtrim($outputDirectory,"/");
+        
         $outputFiles = array();
-        foreach ($this->_servicePHPSources as $serviceName => $serviceCode) {
-            $filename = $outputDirectory."/".$serviceName.".php";
-            if (file_put_contents($filename, 
-                    "<?php\n\n".$classSource."\n\n".$serviceCode."\n\n?>")) {
+        
+        if(!is_dir($outputDirectory."/")) {
+            mkdir($outputDirectory."/");
+        }
+        
+        if(!is_dir($outputDirectory."/classes/")) {
+            mkdir($outputDirectory."/classes/");
+        }
+        
+        foreach($this->_classPHPSources as $className => $classCode) {
+            $filename = $outputDirectory."/classes/".$className.".class.php";
+            if (file_put_contents($filename, "<?php\n\n".$classCode)) {
                 $outputFiles[] = $filename;
             }
         }
+        
+        foreach ($this->_servicePHPSources as $serviceName => $serviceCode) {
+            $filename = $outputDirectory."/".$serviceName.".php";
+            if (file_put_contents($filename, "<?php\n\n".$serviceCode)) {
+                $outputFiles[] = $filename;
+            }
+        }
+        
         if (sizeof($outputFiles) == 0) {
             throw new WSDLInterpreterException("Error writing PHP source files.");
         }
+        
         return $outputFiles;
     }
 }
-
 ?>
