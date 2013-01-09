@@ -8,3 +8,8 @@ This package was originally created by Kevin Vaughan and is located at [http://c
 This fork of the original package has some modifications to support separate class files, located under the /classes directory and namespacing of the generated files.
 
 This package is released under the original LGPL License 2.1.
+
+Usage
+===============
+
+    php WSDLI.php {url to WSDL document}
