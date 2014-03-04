@@ -289,18 +289,20 @@ class WSDLInterpreter
             );
         }
         
-        while (sizeof($sources) > 0)
-        {
-            $classesLoaded = 0;
-            foreach ($sources as $className => $classInfo) {
-                if (!$classInfo["extends"] || (isset($this->_classPHPSources[$classInfo["extends"]]))) {
-                    $this->_classPHPSources[$className] = $classInfo["source"];
-                    unset($sources[$className]);
-                    $classesLoaded++;
+        if(isset($sources)){
+            while (sizeof($sources) > 0)
+            {
+                $classesLoaded = 0;
+                foreach ($sources as $className => $classInfo) {
+                    if (!$classInfo["extends"] || (isset($this->_classPHPSources[$classInfo["extends"]]))) {
+                        $this->_classPHPSources[$className] = $classInfo["source"];
+                        unset($sources[$className]);
+                        $classesLoaded++;
+                    }
                 }
-            }
-            if (($classesLoaded == 0) && (sizeof($sources) > 0)) {
-                throw new WSDLInterpreterException("Error loading PHP classes: ".join(", ", array_keys($sources)));
+                if (($classesLoaded == 0) && (sizeof($sources) > 0)) {
+                    throw new WSDLInterpreterException("Error loading PHP classes: ".join(", ", array_keys($sources)));
+                }
             }
         }
     }
