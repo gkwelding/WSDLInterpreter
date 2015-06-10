@@ -1,16 +1,13 @@
 <?php
 /**
  * Interprets WSDL documents for the purposes of PHP 5 object creation
- *
  * The WSDLInterpreter package is used for the interpretation of a WSDL
  * document into PHP classes that represent the messages using inheritance
  * and typing as defined by the WSDL rather than SoapClient's limited
  * interpretation.  PHP classes are also created for each service that
  * represent the methods with any appropriate overloading and strict
  * variable type checking as defined by the WSDL.
- *
  * PHP version 5
- *
  * LICENSE: This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
@@ -28,7 +25,6 @@
  * @author      Kevin Vaughan kevin@kevinvaughan.com
  * @copyright   2007 Kevin Vaughan
  * @license     http://www.gnu.org/copyleft/lesser.html  LGPL License 2.1
- *
  */
 
 /**
@@ -36,6 +32,8 @@
  * unrecoverable program states.
  *
  * @category WebServices
- * @package WSDLInterpreter
+ * @package  WSDLInterpreter
  */
-class WSDLInterpreterException extends Exception { }
+class WSDLInterpreterException extends Exception {
+
+}
