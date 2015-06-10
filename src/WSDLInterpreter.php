@@ -200,7 +200,6 @@ class WSDLInterpreter {
                 $validType = "integer";
                 break;
             case "float":
-            case "long":
             case "double":
             case "decimal":
                 $validType = "double";
@@ -400,7 +399,7 @@ class WSDLInterpreter {
         $return .= "\t" . ' * @param array $arguments The argument list to check' . "\n";
         $return .= "\t" . ' * @param array $validParameters A list of valid argument ' . 'types' . "\n";
         $return .= "\t" . ' * @return boolean true if arguments match against ' . 'validParameters' . "\n";
-        $return .= "\t" . ' * @throws Exception invalid function signature message' . "\n";
+        $return .= "\t" . ' * @throws \Exception invalid function signature message' . "\n";
         $return .= "\t" . ' */' . "\n";
         $return .= "\t" . 'public function _checkArguments($arguments, $validParameters) {' . "\n";
         $return .= "\t\t" . '$variables = "";' . "\n";
@@ -412,7 +411,7 @@ class WSDLInterpreter {
         $return .= "\t\t" . '    $variables .= "(".$type.")";' . "\n";
         $return .= "\t\t" . '}' . "\n";
         $return .= "\t\t" . 'if (!in_array($variables, $validParameters)) {' . "\n";
-        $return .= "\t\t" . '    throw new Exception("Invalid parameter types: ' . '".str_replace(")(", ", ", $variables));' . "\n";
+        $return .= "\t\t" . '    throw new \Exception("Invalid parameter types: ' . '".str_replace(")(", ", ", $variables));' . "\n";
         $return .= "\t\t" . '}' . "\n";
         $return .= "\t\t" . 'return true;' . "\n";
         $return .= "\t}\n\n";
@@ -486,10 +485,11 @@ class WSDLInterpreter {
         $return .= join( "\n", $parameterComments ) . "\n";
         $return .= "\t" . ' * @param mixed,... See function description for parameter options' . "\n";
         $return .= "\t" . ' * @return ' . join( "|", array_unique( $returnOptions ) ) . "\n";
-        $return .= "\t" . ' * @throws Exception invalid function signature message' . "\n";
+        $return .= "\t" . ' * @throws \Exception invalid function signature message' . "\n";
         $return .= "\t" . ' */' . "\n";
         $return .= "\t" . 'public function ' . $functionName . '($mixed = null) {' . "\n";
         $return .= "\t\t" . '$validParameters = array(' . "\n";
+        $variableTypeOptions = array_unique( $variableTypeOptions );
         foreach ( $variableTypeOptions as $variableTypeOption ) {
             $return .= "\t\t\t" . '"' . $variableTypeOption . '",' . "\n";
         }

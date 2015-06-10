@@ -1,5 +1,5 @@
-/src/output/*.php
-/src/output/classes/*.php
+src/output/
+src/output/classes/
 tests/WSDLI/
 composer.lock
 .idea

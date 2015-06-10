@@ -21,8 +21,12 @@
  * @license     http://www.gnu.org/copyleft/lesser.html  LGPL License 2.1
  */
 require_once 'WSDLInterpreter.php';
-$wsdlInterpreter = new WSDLInterpreter( $argv[1] );
 try {
+    if ( isset( $argv ) ) {
+        $wsdlInterpreter = new WSDLInterpreter( $argv[1] );
+    } else if ( isset( $_GET['wsdlFile'] ) ) {
+        $wsdlInterpreter = new WSDLInterpreter( $_GET['wsdlFile'] );
+    }
     $results = $wsdlInterpreter->savePHP( dirname( __FILE__ ) . '/output/' );
     echo "Written: \n";
     foreach ( $results as $result ) {
