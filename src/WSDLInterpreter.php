@@ -227,6 +227,7 @@ class WSDLInterpreter {
      */
     protected function _loadClasses() {
         $sources = array();
+        /** @var DOMElement[] $classes */
         $classes = $this->_dom->getElementsByTagName( "class" );
         foreach ( $classes as $class ) {
             $class->setAttribute( "validatedName", $this->_validateClassName( $class->getAttribute( "name" ) ) );
@@ -237,6 +238,7 @@ class WSDLInterpreter {
             } else {
                 $classExtension = FALSE;
             }
+            /** @var DOMElement[] $properties */
             $properties = $class->getElementsByTagName( "entry" );
             foreach ( $properties as $property ) {
                 $property->setAttribute( "validatedName", $this->_validateNamingConvention( $property->getAttribute( "name" ) ) );
@@ -338,8 +340,10 @@ class WSDLInterpreter {
                 $function->setAttribute( "validatedName", $this->_validateNamingConvention( $function->getAttribute( "name" ) ) );
                 $parameters = $function->getElementsByTagName( "parameters" );
                 if ( $parameters->length > 0 ) {
+                    /** @var DOMElement $entryItem */
+                    $entryItem = $parameters->item( 0 );
                     /** @var DOMElement[] $parameterList */
-                    $parameterList = $parameters->item( 0 )->getElementsByTagName( "entry" );
+                    $parameterList = $entryItem->getElementsByTagName( "entry" );
                     foreach ( $parameterList as $variable ) {
                         $variable->setAttribute( "validatedName", $this->_validateNamingConvention( $variable->getAttribute( "name" ) ) );
                         $variable->setAttribute( "type", $this->_validateType( $variable->getAttribute( "type" ) ) );
@@ -473,11 +477,16 @@ class WSDLInterpreter {
                     $parameterComments[] = "\t" . ' * ' . join( ", ", $parameterList );
                 }
             }
+            /** @var DOMNodeList $returns */
             $returns = $functionNode->getElementsByTagName( "returns" );
             if ( $returns->length > 0 ) {
-                $returns = $returns->item( 0 )->getElementsByTagName( "entry" );
-                if ( $returns->length > 0 ) {
-                    $returnOptions[] = $returns->item( 0 )->getAttribute( "type" );
+                /** @var DOMElement $entryItem */
+                $entryItem = $returns->item( 0 );
+                $entry = $entryItem->getElementsByTagName( "entry" );
+                if ( $entry->length > 0 ) {
+                    /** @var DOMElement $typeItem */
+                    $typeItem = $entry->item( 0 );
+                    $returnOptions[] = $typeItem->getAttribute( "type" );
                 }
             }
         }
