@@ -453,7 +453,7 @@ class WSDLInterpreter
             $this->_wsdl.'", $options=array()) {'."\n";
         $return .= "\t\t".'foreach(self::$classmap as $wsdlClassName => $phpClassName) {'."\n";
         $return .= "\t\t".'    if(!isset($options[\'classmap\'][$wsdlClassName])) {'."\n";
-        $return .= "\t\t".'        $options[\'classmap\'][$wsdlClassName] = $phpClassName;'."\n";
+        $return .= "\t\t".'        $options[\'classmap\'][$wsdlClassName] = "\\\".__NAMESPACE__."\\\$phpClassName";'."\n";
         $return .= "\t\t".'    }'."\n";
         $return .= "\t\t".'}'."\n";
         $return .= "\t\t".'parent::__construct($wsdl, $options);'."\n";
@@ -473,7 +473,7 @@ class WSDLInterpreter
         $return .= "\t\t".'foreach ($arguments as $arg) {'."\n";
         $return .= "\t\t".'    $type = gettype($arg);'."\n";
         $return .= "\t\t".'    if ($type == "object") {'."\n";
-        $return .= "\t\t".'        $type = get_class($arg);'."\n";
+        $return .= "\t\t".'        $type = preg_replace(\'/^\'.__NAMESPACE__.\'\\\\\/\', \'\', get_class($arg));'."\n";
         $return .= "\t\t".'    }'."\n";
         $return .= "\t\t".'    $variables .= "(".$type.")";'."\n";
         $return .= "\t\t".'}'."\n";
