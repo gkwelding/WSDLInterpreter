@@ -429,7 +429,7 @@ class WSDLInterpreter
         $return .= ' * '.$service->getAttribute("validatedName")."\n";
         $return .= ' * @author WSDLInterpreter'."\n";
         $return .= ' */'."\n";
-        $return .= "class ".$service->getAttribute("validatedName")." extends SoapClient {\n";
+        $return .= "class ".$service->getAttribute("validatedName")." extends \SoapClient {\n";
 
         if (sizeof($this->_classmap) > 0) {
             $return .= "\t".'/**'."\n";
@@ -466,7 +466,7 @@ class WSDLInterpreter
             'types'."\n";
         $return .= "\t".' * @return boolean true if arguments match against '.
             'validParameters'."\n";
-        $return .= "\t".' * @throws Exception invalid function signature message'."\n"; 
+        $return .= "\t".' * @throws \Exception invalid function signature message'."\n"; 
         $return .= "\t".' */'."\n";
         $return .= "\t".'public function _checkArguments($arguments, $validParameters) {'."\n";
         $return .= "\t\t".'$variables = "";'."\n";
@@ -478,7 +478,7 @@ class WSDLInterpreter
         $return .= "\t\t".'    $variables .= "(".$type.")";'."\n";
         $return .= "\t\t".'}'."\n";
         $return .= "\t\t".'if (!in_array($variables, $validParameters)) {'."\n";
-        $return .= "\t\t".'    throw new Exception("Invalid parameter types: '.
+        $return .= "\t\t".'    throw new \Exception("Invalid parameter types: '.
             '".str_replace(")(", ", ", $variables));'."\n";
         $return .= "\t\t".'}'."\n";
         $return .= "\t\t".'return true;'."\n";
@@ -554,7 +554,7 @@ class WSDLInterpreter
         $return .= join("\n", $parameterComments)."\n";
         $return .= "\t".' * @param mixed,... See function description for parameter options'."\n";
         $return .= "\t".' * @return '.join("|", array_unique($returnOptions))."\n";
-        $return .= "\t".' * @throws Exception invalid function signature message'."\n"; 
+        $return .= "\t".' * @throws \Exception invalid function signature message'."\n"; 
         $return .= "\t".' */'."\n";
         $return .= "\t".'public function '.$functionName.'($mixed = null) {'."\n";
         $return .= "\t\t".'$validParameters = array('."\n";
