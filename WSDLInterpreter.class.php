@@ -94,6 +94,53 @@ class WSDLInterpreter
     private $_servicePHPSources = array();
     
     /**
+     * The target PHP namespace to put in generated classes
+     * 
+     * When empty, no namespace is added
+     * 
+     * @var string
+     * @access protected
+     */
+    protected $target_namespace = '';
+    
+    /**
+     * Should we generate one big file or separate classfiles
+     * 
+     * One big file is the historical behaviour, but now we generate
+     * separate files for each class.
+     * 
+     * @var boolean
+     * @access protected
+     */
+    protected $one_big_file = false;
+    
+    /**
+     * Should we add class_exists statements to generated classes?
+     * 
+     * Set true to have historical behaviour
+     * 
+     * @var boolean
+     * @access protected
+     */
+    protected $add_class_exists = false;
+    
+    /**
+     * Should we output logging
+     * 
+     * @var boolean
+     * @access protected
+     */
+    protected $logging = false;
+    
+    /**
+     * The soap version used to validate the wsdl
+     * 
+     * @var int
+     * @access protected
+     */
+    protected $soap_version = SOAP_1_1;
+    
+    /**
      * Parses the target wsdl and loads the interpretation into object members
      * 
      * @param string $wsdl  the URI of the wsdl to interpret
@@ -102,11 +149,46 @@ class WSDLInterpreter
      */
     public function __construct($wsdl) 
     {
-        try {
+        $this->_wsdl = $wsdl;
+    }
+    
+    /**
+     * Logs a message
+     * 
+     * @param string $message
+     * 
+     * @access private
+     */
+    protected function _debugLog($message) 
+    {
+        if($this->logging){
+            error_log($message);
+        }
+    }
+    
+    /**
+     * Parse the WSDL file
+     * 
+     * @param string $outputDirectory the destination directory for the intermediate files
+     * @param string $wsdl  optionally give wsdl to parse, if null use the wsdl from constructor
+     * @access public
+     */
+    public function parseWSDL($outputDirectory, $wsdl=null)
+    {
+        if( !is_null($wsdl) ){
             $this->_wsdl = $wsdl;
-            $this->_client = new SoapClient($this->_wsdl);
+        }
+        
+        // initialize
+        $this->_classmap=array();
+        $this->_classPHPSources=array();
+        $this->_servicePHPSources=array();
+        
+        // parse
+        try {
             
             $this->_dom = new DOMDocument();
+            $this->_debugLog('loading wsdl: '.$this->_wsdl);
             $this->_dom->load($this->_wsdl, LIBXML_DTDLOAD|LIBXML_DTDATTR|LIBXML_NOENT|LIBXML_XINCLUDE);
             
             $xpath = new DOMXPath($this->_dom);
@@ -119,6 +201,7 @@ class WSDLInterpreter
             foreach ($entries as $entry) {
                 $parent = $entry->parentNode;
                 $wsdl = new DOMDocument();
+                $this->_debugLog('loading wsdl: '.$entry->getAttribute("location"));
                 $wsdl->load($entry->getAttribute("location"), LIBXML_DTDLOAD|LIBXML_DTDATTR|LIBXML_NOENT|LIBXML_XINCLUDE);
                 foreach ($wsdl->documentElement->childNodes as $node) {
                     $newNode = $this->_dom->importNode($node, true);
@@ -135,6 +218,7 @@ class WSDLInterpreter
             foreach ($entries as $entry) {
                 $parent = $entry->parentNode;
                 $xsd = new DOMDocument();
+                $this->_debugLog('loading wsdl: '.dirname($this->_wsdl) . "/" . $entry->getAttribute("schemaLocation"));
                 $result = @$xsd->load(dirname($this->_wsdl) . "/" . $entry->getAttribute("schemaLocation"), 
                     LIBXML_DTDLOAD|LIBXML_DTDATTR|LIBXML_NOENT|LIBXML_XINCLUDE);
                 if ($result) {
@@ -148,6 +232,13 @@ class WSDLInterpreter
             
             
             $this->_dom->formatOutput = true;
+            // okay, $this->_dom is now the wsdl with all import statements handled
+            // lets save it and see if its valid wsdl by passing it to SoapClient
+            $this->_dom->save($outputDirectory.'/sanitized.wsdl');
+            
+            // now open in soapclient to see if it is valid wsdl
+            $this->_debugLog('starting SoapClient with wsdl: '.$outputDirectory.'/sanitized.wsdl');
+            $this->_client = new SoapClient($outputDirectory.'/sanitized.wsdl', array('soap_version'   => $this->soap_version, 'cache_wsdl' => WSDL_CACHE_NONE));
         } catch (Exception $e) {
             throw new WSDLInterpreterException("Error loading WSDL document (".$e->getMessage().")");
         }
@@ -160,6 +251,8 @@ class WSDLInterpreter
             $xsl->importStyleSheet($xslDom);
             $this->_dom = $xsl->transformToDoc($this->_dom);
             $this->_dom->formatOutput = true;
+            // save the transformed wsdl so we can inspect it if we want
+            $this->_dom->save($outputDirectory.'/transformed.xml');
         } catch (Exception $e) {
             throw new WSDLInterpreterException("Error interpreting WSDL document (".$e->getMessage().")");
         }
@@ -167,7 +260,7 @@ class WSDLInterpreter
         $this->_loadClasses();
         $this->_loadServices();
     }
-
+    
     /**
      * Validates a name against standard PHP naming conventions
      * 
@@ -264,6 +357,7 @@ class WSDLInterpreter
     private function _loadClasses() 
     {
         $classes = $this->_dom->getElementsByTagName("class");
+        $sources = array();
         foreach ($classes as $class) {
             $class->setAttribute("validatedName", 
                 $this->_validateClassName($class->getAttribute("name")));
@@ -289,7 +383,7 @@ class WSDLInterpreter
             );
         }
         
-        while (sizeof($sources) > 0)
+        while (count($sources) > 0)
         {
             $classesLoaded = 0;
             foreach ($sources as $className => $classInfo) {
@@ -299,7 +393,7 @@ class WSDLInterpreter
                     $classesLoaded++;
                 }
             }
-            if (($classesLoaded == 0) && (sizeof($sources) > 0)) {
+            if (($classesLoaded == 0) && (count($sources) > 0)) {
                 throw new WSDLInterpreterException("Error loading PHP classes: ".join(", ", array_keys($sources)));
             }
         }
@@ -323,7 +417,14 @@ class WSDLInterpreter
      */
     private function _generateClassPHP($class) 
     {
-        $return = 'namespace WSDLI;'."\n\n";
+        $return = '';
+        if($this->target_namespace){
+          $return .= 'namespace '.$this->target_namespace.';'."\n";
+        }
+        if($this->add_class_exists){
+          $return .= 'if (!class_exists("'.$class->getAttribute("validatedName").'")) {';
+        }
+        $return .= "\n";
         $return .= '/**'."\n";
         $return .= ' * '.$class->getAttribute("validatedName")."\n";
         $return .= ' */'."\n";
@@ -374,6 +475,10 @@ class WSDLInterpreter
         }
     
         $return .= "}";
+        if($this->add_class_exists){
+          $return .= '}';
+        }
+        
         return $return;
     }
     
@@ -424,14 +529,21 @@ class WSDLInterpreter
      */
     private function _generateServicePHP($service) 
     {
-        $return = 'namespace WSDLI;'."\n\n";
+        $return = '';
+        if($this->target_namespace){
+          $return .= 'namespace '.$this->target_namespace.';'."\n";
+        }
+        if($this->add_class_exists){
+          $return .= 'if (!class_exists("'.$service->getAttribute("validatedName").'")) {';
+        }
+        $return .= "\n";
         $return .= '/**'."\n";
         $return .= ' * '.$service->getAttribute("validatedName")."\n";
         $return .= ' * @author WSDLInterpreter'."\n";
         $return .= ' */'."\n";
         $return .= "class ".$service->getAttribute("validatedName")." extends \SoapClient {\n";
 
-        if (sizeof($this->_classmap) > 0) {
+        if (count($this->_classmap) > 0) {
             $return .= "\t".'/**'."\n";
             $return .= "\t".' * Default class map for wsdl=>php'."\n";
             $return .= "\t".' * @access private'."\n";
@@ -497,6 +609,9 @@ class WSDLInterpreter
         }
     
         $return .= "}";
+        if($this->add_class_exists){
+          $return .= '}';
+        }
         return $return;
     }
 
@@ -537,7 +652,7 @@ class WSDLInterpreter
                     $parameterList[] = "(".$parameter->getAttribute("type").") ".
                         $parameter->getAttribute("validatedName");
                 }
-                if (sizeof($parameterList) > 0) {
+                if (count($parameterList) > 0) {
                     $variableTypeOptions[] = $parameterTypes;
                     $parameterComments[] = "\t".' * '.join(", ", $parameterList);
                 }
@@ -585,10 +700,6 @@ class WSDLInterpreter
      */
     public function savePHP($outputDirectory) 
     {
-        if (sizeof($this->_servicePHPSources) == 0) {
-            throw new WSDLInterpreterException("No services loaded");
-        }
-        
         $outputDirectory = rtrim($outputDirectory,"/");
         
         $outputFiles = array();
@@ -597,29 +708,97 @@ class WSDLInterpreter
             mkdir($outputDirectory."/");
         }
         
+        if( is_null($this->_dom) ){
+            // DOM is still null so wsdl is not parsed yet
+            // auto parse wsdl from class constructor
+            $this->parseWSDL($outputDirectory);
+        }
+        
+        if (count($this->_servicePHPSources) == 0) {
+            throw new WSDLInterpreterException("No services loaded");
+        }
+        
         if(!is_dir($outputDirectory."/classes/")) {
             mkdir($outputDirectory."/classes/");
         }
         
-        foreach($this->_classPHPSources as $className => $classCode) {
-            $filename = $outputDirectory."/classes/".$className.".class.php";
-            if (file_put_contents($filename, "<?php\n\n".$classCode)) {
-                $outputFiles[] = $filename;
+        if($this->one_big_file){
+            // legacy behavior
+            $classSource = join("\n\n", $this->_classPHPSources);
+            
+            foreach ($this->_servicePHPSources as $serviceName => $serviceCode) {
+                $filename = $outputDirectory."/".$serviceName.".php";
+                if (file_put_contents($filename, 
+                        "<?php\n\n".$classSource."\n\n".$serviceCode."\n\n?>")) {
+                    $outputFiles[] = $filename;
+                }
+            }
+        } else {
+            // each class its own file
+            foreach($this->_classPHPSources as $className => $classCode) {
+                $filename = $outputDirectory."/classes/".$className.".class.php";
+                if (file_put_contents($filename, "<?php\n\n".$classCode)) {
+                    $outputFiles[] = $filename;
+                }
+            }
+            
+            foreach ($this->_servicePHPSources as $serviceName => $serviceCode) {
+                $filename = $outputDirectory."/".$serviceName.".php";
+                if (file_put_contents($filename, "<?php\n\n".$serviceCode)) {
+                    $outputFiles[] = $filename;
+                }
             }
         }
         
-        foreach ($this->_servicePHPSources as $serviceName => $serviceCode) {
-            $filename = $outputDirectory."/".$serviceName.".php";
-            if (file_put_contents($filename, "<?php\n\n".$serviceCode)) {
-                $outputFiles[] = $filename;
-            }
-        }
-        
-        if (sizeof($outputFiles) == 0) {
+        if (count($outputFiles) == 0) {
             throw new WSDLInterpreterException("Error writing PHP source files.");
         }
         
         return $outputFiles;
+    }
+    
+    /**
+     * Set which PHP namespace to use.
+     * 
+     * @param string $namespace thePHP namespace name
+     * @access public
+     */
+    public function setPHPNamespace($namespace) 
+    {
+        $this->target_namespace = $namespace;
+    }
+    
+    /**
+     * Set if to use class_exists checks around generated classes
+     * 
+     * @param boolean $bool
+     * @access public
+     */
+    public function setAddClassExistCheck($bool=true) 
+    {
+        $this->add_class_exists = $bool;
+    }
+    
+    /**
+     * Set if to generate one big file
+     * 
+     * @param boolean $bool
+     * @access public
+     */
+    public function setOneBigFile($bool=true) 
+    {
+        $this->one_big_file = $bool;
+    }
+    
+    /**
+     * Enable or disable logging
+     * 
+     * @param boolean $bool
+     * @access public
+     */
+    public function setLogging($bool=true) 
+    {
+        $this->logging = $bool;
     }
 }
 ?>
